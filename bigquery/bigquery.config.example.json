@@ -1,0 +1,21 @@
+{
+  "$comment": "Copie este arquivo para bigquery.config.json e preencha os valores. Nunca versione bigquery.config.json.",
+  "projectId": "SEU_GCP_PROJECT_ID",
+  "datasetId": "crawler_tag_audit",
+  "location": "US",
+  "tables": {
+    "executions": "executions",
+    "events": "events"
+  },
+  "export": {
+    "batchSize": 500,
+    "writeDisposition": "WRITE_APPEND",
+    "partitionField": "event_date",
+    "clusteringFields": ["audit_id", "technology", "event_type"]
+  },
+  "schedule": {
+    "enabled": false,
+    "cronExpression": "0 6 * * *",
+    "$comment_schedule": "Exporta diariamente às 06:00 UTC. Altere conforme necessário."
+  }
+}

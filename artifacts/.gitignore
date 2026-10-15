@@ -1,0 +1,4 @@
+# Não versionar evidências brutas que possam conter dados sensíveis.
+*
+!.gitignore
+!README.md

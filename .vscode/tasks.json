@@ -1,0 +1,682 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Docker Rebuild - Playwright Fix",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoExit",
+				"-Command",
+				"cd 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag' -ErrorAction Stop; docker-compose down; docker system prune -f; docker-compose build --no-cache backend; docker-compose up -d; Write-Host 'Rebuild started, waiting for services to be ready...'; Start-Sleep -Seconds 90; Write-Host 'Services should be ready now'; Write-Host 'Test: curl http://localhost:3001/health'"
+			]
+		},
+		{
+			"label": "Diagnose Playwright Installation",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"cd 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Write-Host 'Running Playwright diagnostic...'; docker exec crawler_tag_backend bash -c 'bash < /tmp/diagnose.sh' 2>&1 | Tee-Object -FilePath 'diagnose_output.txt'; Write-Host 'Full output saved to diagnose_output.txt'; $output = Get-Content 'diagnose_output.txt' -Raw; Write-Host $output"
+			]
+		},
+		{
+			"label": "Diagnose Playwright - Run Script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"cd 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Write-Host 'Running Playwright diagnostic...'; docker exec crawler_tag_backend bash scripts/diagnose-playwright.sh 2>&1"
+			]
+		},
+		{
+			"label": "Check Docker Services Status",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"cd 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; docker-compose ps; docker-compose logs backend 2>&1 | tail -50"
+			]
+		},
+		{
+			"label": "Get Backend Docker Logs (Last 100)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Set-Location -LiteralPath $location; docker-compose logs backend 2>&1 | Select-Object -Last 100"
+			]
+		},
+		{
+			"label": "Rebuild with Playwright Verification",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Stopping containers...'; docker-compose down; Write-Host 'Cleaning build cache...'; docker builder prune -af --filter 'until=24h'; Write-Host 'Building backend with enhanced Playwright check...'; docker-compose build --no-cache backend 2>&1 | Select-Object -Last 50; Write-Host 'Build complete. Starting services...'; docker-compose up -d; Write-Host 'Waiting 30 seconds for startup...'; Start-Sleep -Seconds 30; Write-Host 'Checking health...'; Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing | Select-Object -ExpandProperty Content"
+			]
+		},
+		{
+			"label": "Rebuild Backend (Fixed TypeScript)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Stopping containers...'; docker-compose down -q; Write-Host 'Building backend...'; $build = docker-compose build --no-cache backend 2>&1; if ($LASTEXITCODE -eq 0) { Write-Host '✓ Build successful'; docker-compose up -d -q; Write-Host 'Waiting for services...'; Start-Sleep -Seconds 60; $health = Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing; Write-Host \"Health: $($health.Content)\"; } else { Write-Host '✗ Build failed'; Write-Host ($build | Select-Object -Last 30 | Out-String); }"
+			]
+		},
+		{
+			"label": "Rebuild Backend Final",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Stopping containers...'; docker-compose down; Write-Host 'Building backend...'; docker-compose build --no-cache backend; if ($LASTEXITCODE -eq 0) { Write-Host 'Build successful'; docker-compose up -d; Write-Host 'Waiting 60 seconds for services...'; Start-Sleep -Seconds 60; Write-Host 'Services should be ready'; } else { Write-Host 'Build failed'; }"
+			]
+		},
+		{
+			"label": "Diagnose Playwright in Container",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; docker exec crawler_tag_backend bash -c 'echo \"=== Checking Playwright Installation ===\"; echo \"node_modules/playwright:\"; ls -d node_modules/playwright 2>&1 || echo \"NOT FOUND\"; echo \"\"; echo \"Playwright package.json:\"; cat node_modules/playwright/package.json 2>&1 | grep version | head -1; echo \"\"; echo \"Cache directory:\"; ls -la /root/.cache/ms-playwright/ 2>&1 | head -10 || echo \"NO CACHE\"; echo \"\"; echo \"npx playwright version:\"; npx playwright --version 2>&1'"
+			]
+		},
+		{
+			"label": "Start Docker Services",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Starting docker-compose...'; docker-compose up -d; Write-Host 'Waiting for containers...'; Start-Sleep -Seconds 30; Write-Host 'Checking if containers are running:'; docker-compose ps"
+			]
+		},
+		{
+			"label": "Check Playwright Cache",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Checking Playwright in container...'; docker exec crawler_tag_backend bash -c 'ls /root/.cache/ms-playwright/ 2>&1 | head -5'"
+			]
+		},
+		{
+			"label": "Check Cache Contents",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Checking Playwright cache...'; docker exec crawler_tag_backend bash -c 'ls -la /root/.cache/ms-playwright/'"
+			]
+		},
+		{
+			"label": "Run Backend in Foreground",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Starting backend...'; docker-compose up backend 2>&1 | Select-Object -First 100"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "Clean Rebuild Playwright",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Stopping services...'; docker-compose down; Write-Host 'Removing all Docker images...'; docker rmi crawler_tag-backend 2>&1 | Out-Null; Write-Host 'Rebuilding from scratch...'; docker-compose build --progress=plain backend 2>&1 | Select-Object -Last 100; Write-Host 'Starting services...'; docker-compose up -d; Write-Host 'Waiting 60 seconds...'; Start-Sleep -Seconds 60; Write-Host 'Checking health...'; Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing | Select-Object -ExpandProperty Content"
+			]
+		},
+		{
+			"label": "Bring Up and Test",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$location = 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Push-Location -LiteralPath $location; Write-Host 'Bringing up services...'; docker-compose up -d; Write-Host 'Waiting 90 seconds for full startup...'; Start-Sleep -Seconds 90; Write-Host 'Testing health check...'; try { $h = Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing -ErrorAction Stop; Write-Host \"✓ Backend OK: $($h.Content)\" } catch { Write-Host \"✗ Backend not responding yet\"; Write-Host \"Checking container status:\"; docker-compose ps }"
+			]
+		},
+		{
+			"label": "Backend Logs",
+			"type": "shell",
+			"command": "docker logs crawler_tag-backend-1 --tail 50",
+			"args": []
+		},
+		{
+			"label": "List All Containers",
+			"type": "shell",
+			"command": "docker ps -a",
+			"args": []
+		},
+		{
+			"label": "Compose Up Verbose",
+			"type": "shell",
+			"command": "cd /d \"C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag\" && docker-compose up -d 2>&1",
+			"args": []
+		},
+		{
+			"label": "Compose Up Final",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"Push-Location -LiteralPath 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Write-Host 'Current dir:' (Get-Location); Write-Host 'docker-compose up...'; docker-compose up -d; Write-Host 'Waiting 30 seconds...'; Start-Sleep -Seconds 30; Write-Host 'Checking containers...'; docker ps -a"
+			]
+		},
+		{
+			"label": "Check Containers and Images",
+			"type": "shell",
+			"command": "docker ps -a && echo. && docker images | grep crawler",
+			"args": []
+		},
+		{
+			"label": "Check Containers",
+			"type": "shell",
+			"command": "docker ps -a",
+			"args": []
+		},
+		{
+			"label": "List Docker Images",
+			"type": "shell",
+			"command": "docker images",
+			"args": []
+		},
+		{
+			"label": "No-Cache Build and Start",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"Push-Location -LiteralPath 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Write-Host '[1/3] Building backend with no-cache...'; docker-compose build --no-cache backend 2>&1 | Tee-Object -FilePath build_log.txt | Select-Object -Last 50; Write-Host '[2/3] Starting services...'; docker-compose up -d; Write-Host '[3/3] Waiting 60s...'; Start-Sleep -Seconds 60; Write-Host 'Container status:'; docker ps -a; Write-Host 'Image list:'; docker images | Select-String crawler"
+			]
+		},
+		{
+			"label": "Build with Corrected Script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"cd 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; Write-Host 'Building backend with corrected script...'; docker-compose build --no-cache backend 2>&1 | Select-Object -Last 100; Write-Host ''; Write-Host 'Starting services...'; docker-compose up -d; Write-Host 'Waiting 60s...'; Start-Sleep -Seconds 60; Write-Host 'Checking health...'; try { Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing } catch { Write-Host 'Health check failed' }; docker ps -a"
+			]
+		},
+		{
+			"label": "Build Corrected and Test",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$p='C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; cd $p; Write-Host 'Step 1: Building...'; docker-compose build --no-cache backend 2>&1 | Select-Object -Last 100; Write-Host ''; Write-Host 'Step 2: Starting...'; docker-compose up -d; Write-Host 'Step 3: Waiting 60s...'; Start-Sleep -Seconds 60; Write-Host 'Containers:'; docker ps -a; Write-Host ''; Write-Host 'Health:'; (Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing).Content"
+			]
+		},
+		{
+			"label": "Execute Build Script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"build_and_test.ps1"
+			]
+		},
+		{
+			"label": "Execute Build Script Fixed",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"build_and_test.ps1"
+			]
+		},
+		{
+			"label": "Build backend isolated",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Alelo diagnostic headed",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$env:CRAWLER_HEADLESS='false'; npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Build backend isolated v2",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Alelo diagnostic single-page",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$env:CRAWLER_SINGLE_URL_MODE='true'; $env:CRAWLER_DEPTH='1'; $env:CRAWLER_MAX_ACTIONS='60'; $env:CRAWLER_MAX_STATES='20'; npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Run Alelo diagnostic single-page env cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=80&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Run Alelo diagnostic single-page headed cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=80&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Build backend isolated v3",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build backend isolated v4",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Alelo diagnostic single-page headed cmd v2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=80&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Run Porto state diagnostic",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& npx tsx scripts/check-porto-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Run generic diagnostic Porto auto credito",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://www.portoseguro.com.br/auto-credito&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=60&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Build backend isolated v5",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run generic diagnostic Porto auto credito v2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://www.portoseguro.com.br/auto-credito&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=60&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Run generic diagnostic Porto servicos",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://www.portoseguro.com.br/servicos&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=60&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Build backend isolated cycle-1",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Cycle 1 Alelo single-page headed",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=80&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Build backend isolated cycle-2",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build backend isolated cycle-2b",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Cycle 2 Porto servicos",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://www.portoseguro.com.br/servicos&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=60&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Build backend isolated cycle-3",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build backend isolated cycle-3b",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Cycle 3 Porto servicos descriptor",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://www.portoseguro.com.br/servicos&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=60&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Cycle 4 Porto viagem regression",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& npx tsx scripts/check-porto-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Cycle 5 Porto auto credito regression",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://www.portoseguro.com.br/auto-credito&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=60&& set CRAWLER_MAX_STATES=20&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Validate screenshots until pass or 10",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$ErrorActionPreference='Stop'; Push-Location -LiteralPath 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; $ok=$false; for($i=1; $i -le 10; $i++){ Write-Host ('=== RUN ' + $i + ' ==='); $env:CRAWLER_HEADLESS='false'; $env:CRAWLER_TEST_URL='https://loja.alelo.com.br/'; $env:CRAWLER_SINGLE_URL_MODE='true'; $env:CRAWLER_DEPTH='1'; $env:CRAWLER_MAX_ACTIONS='70'; $env:CRAWLER_MAX_STATES='25'; $out = npx tsx scripts/check-alelo-states.ts 2>&1 | Out-String; $states = if($out -match 'UNIQUE_STATE_NAMES:\\s*(\\d+)'){ [int]$Matches[1] } else { -1 }; $shots = if($out -match 'STATE_SCREENSHOTS:\\s*(\\d+)'){ [int]$Matches[1] } else { -1 }; $status = if($out -match 'STATUS:\\s*([^\\r\\n]+)'){ $Matches[1].Trim() } else { 'unknown' }; Write-Host ('RESULT run=' + $i + ' status=' + $status + ' states=' + $states + ' screenshots=' + $shots); if($shots -gt 1){ $ok=$true; Write-Host ('PASS on run ' + $i); break } }; if(-not $ok){ Write-Host 'FAIL: no run reached screenshots > 1 within 10 attempts' }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Validate screenshots until pass or 10 v2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-Command",
+				"$ErrorActionPreference='Stop'; Push-Location -LiteralPath 'C:\\Users\\humberto.trindade\\OneDrive - Stefanini\\Documents\\Demandas\\crawler_tag'; $ok=$false; for($i=1; $i -le 10; $i++){ Write-Host ('=== RUN ' + $i + ' ==='); $env:CRAWLER_HEADLESS='false'; $env:CRAWLER_TEST_URL='https://loja.alelo.com.br/'; $env:CRAWLER_SINGLE_URL_MODE='true'; $env:CRAWLER_DEPTH='1'; $env:CRAWLER_MAX_ACTIONS='70'; $env:CRAWLER_MAX_STATES='25'; $out = npx tsx scripts/check-alelo-states.ts 2>&1 | Out-String; $states = if($out -match 'UNIQUE_STATE_NAMES:\\s*(\\d+)'){ [int]$Matches[1] } else { -1 }; $shots = if($out -match 'STATE_SCREENSHOTS:\\s*(\\d+)'){ [int]$Matches[1] } else { -1 }; $status = if($out -match 'STATUS:\\s*(.+)'){ $Matches[1].Trim() } else { 'unknown' }; Write-Host ('RESULT run=' + $i + ' status=' + $status + ' states=' + $states + ' screenshots=' + $shots); if($shots -gt 1){ $ok=$true; Write-Host ('PASS on run ' + $i); break } }; if(-not $ok){ Write-Host 'FAIL: no run reached screenshots > 1 within 10 attempts' }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run Alelo diagnostic cmd env",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://loja.alelo.com.br/&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=70&& set CRAWLER_MAX_STATES=25&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run Alelo diagnostic cmd env after baseline screenshot fix",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://loja.alelo.com.br/&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=70&& set CRAWLER_MAX_STATES=25&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild frontend container for cookie UI",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build",
+				"frontend"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild frontend container after dockerignore fix",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build",
+				"frontend"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Validate Alelo after CF cookie hardening",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set CRAWLER_HEADLESS=false&& set CRAWLER_TEST_URL=https://loja.alelo.com.br/&& set CRAWLER_SINGLE_URL_MODE=true&& set CRAWLER_DEPTH=1&& set CRAWLER_MAX_ACTIONS=70&& set CRAWLER_MAX_STATES=25&& npx tsx scripts/check-alelo-states.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild backend after CF stop reason/injection fix",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build",
+				"backend"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild stack after visual mode and blocked URLs changes",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build",
+				"backend",
+				"frontend"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild frontend for visible browser mode toggle",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build",
+				"frontend"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild frontend with blocked-url details",
+			"type": "shell",
+			"command": "docker compose up -d --build frontend",
+			"isBackground": false
+		},
+		{
+			"label": "Rebuild backend frontend for headless run",
+			"type": "shell",
+			"command": "docker compose up -d --build backend frontend"
+		},
+		{
+			"label": "Restart backend to process queued executions",
+			"type": "shell",
+			"command": "docker compose restart backend"
+		},
+		{
+			"label": "Restart backend to start v5",
+			"type": "shell",
+			"command": "docker compose restart backend"
+		},
+		{
+			"label": "Rebuild backend for blocked screenshot evidence",
+			"type": "shell",
+			"command": "docker compose up -d --build backend"
+		},
+		{
+			"label": "Rebuild backend with navigation budget",
+			"type": "shell",
+			"command": "docker compose up -d --build backend"
+		},
+		{
+			"label": "Rebuild backend with dynamic link queue",
+			"type": "shell",
+			"command": "docker compose up -d --build backend"
+		}
+	]
+}

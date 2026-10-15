@@ -1,0 +1,18 @@
+[
+  { "name": "execution_id",   "type": "STRING",    "mode": "REQUIRED", "description": "UUID da execução" },
+  { "name": "audit_id",       "type": "STRING",    "mode": "REQUIRED", "description": "UUID da auditoria" },
+  { "name": "audit_name",     "type": "STRING",    "mode": "REQUIRED" },
+  { "name": "version",        "type": "INTEGER",   "mode": "REQUIRED", "description": "Versão incremental da execução para a mesma auditoria" },
+  { "name": "status",         "type": "STRING",    "mode": "REQUIRED" },
+  { "name": "platform",       "type": "STRING",    "mode": "REQUIRED" },
+  { "name": "environment",    "type": "STRING",    "mode": "REQUIRED" },
+  { "name": "started_at",     "type": "TIMESTAMP", "mode": "NULLABLE" },
+  { "name": "ended_at",       "type": "TIMESTAMP", "mode": "NULLABLE" },
+  { "name": "events_count",   "type": "INTEGER",   "mode": "NULLABLE" },
+  { "name": "actions_count",  "type": "INTEGER",   "mode": "NULLABLE" },
+  { "name": "states_count",   "type": "INTEGER",   "mode": "NULLABLE" },
+  { "name": "urls",           "type": "JSON",      "mode": "NULLABLE", "description": "Array de URLs raiz auditadas" },
+  { "name": "warnings",       "type": "JSON",      "mode": "NULLABLE", "description": "Array de avisos (CAPTCHA, adblock, etc.)" },
+  { "name": "ignored_fields", "type": "JSON",      "mode": "NULLABLE" },
+  { "name": "exported_at",    "type": "TIMESTAMP", "mode": "REQUIRED", "description": "Momento em que o registro foi exportado para o BigQuery" }
+]
