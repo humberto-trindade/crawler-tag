@@ -1,0 +1,337 @@
+[
+  {
+    "id": "nome_por_name",
+    "hints": {
+      "name": "nome",
+      "id": "",
+      "dataField": "",
+      "type": "",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "nome",
+      "value": "Teste Sintetico"
+    }
+  },
+  {
+    "id": "nome_por_label",
+    "hints": {
+      "name": "",
+      "id": "",
+      "dataField": "",
+      "type": "",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "Nome completo",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "ignored",
+      "reason": "no_mapping"
+    }
+  },
+  {
+    "id": "email_por_tipo",
+    "hints": {
+      "name": "",
+      "id": "",
+      "dataField": "",
+      "type": "email",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "email",
+      "value": "teste.sintetico@example.test"
+    }
+  },
+  {
+    "id": "email_por_name",
+    "hints": {
+      "name": "email",
+      "id": "",
+      "dataField": "",
+      "type": "text",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "email",
+      "value": "teste.sintetico@example.test"
+    }
+  },
+  {
+    "id": "cpf_por_name",
+    "hints": {
+      "name": "cpf",
+      "id": "",
+      "dataField": "",
+      "type": "",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "cpf",
+      "value": "111.444.777-35"
+    }
+  },
+  {
+    "id": "telefone_por_tipo_tel",
+    "hints": {
+      "name": "",
+      "id": "",
+      "dataField": "",
+      "type": "tel",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "telefone",
+      "value": "(11) 91234-5678"
+    },
+    "divergencia": "telefone trocado no template sintetico para passar na validacao do site (ver docs/progress.md); TS mantem 11999990000"
+  },
+  {
+    "id": "telefone_por_name_celular",
+    "hints": {
+      "name": "celular",
+      "id": "",
+      "dataField": "",
+      "type": "text",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "telefone",
+      "value": "(11) 91234-5678"
+    },
+    "divergencia": "telefone trocado no template sintetico para passar na validacao do site (ver docs/progress.md); TS mantem 11999990000"
+  },
+  {
+    "id": "cep_por_autocomplete",
+    "hints": {
+      "name": "",
+      "id": "",
+      "dataField": "",
+      "type": "",
+      "autocomplete": "postal-code",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "cep",
+      "value": "01001-000"
+    }
+  },
+  {
+    "id": "valor_mensal",
+    "hints": {
+      "name": "monthlyValue",
+      "id": "",
+      "dataField": "",
+      "type": "",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "fallback_money_value",
+      "value": "250"
+    }
+  },
+  {
+    "id": "checkbox_lgpd",
+    "hints": {
+      "name": "aceite_lgpd",
+      "id": "",
+      "dataField": "",
+      "type": "checkbox",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "mapped",
+      "key": "fallback_checkbox",
+      "value": "true"
+    }
+  },
+  {
+    "id": "search_por_tipo",
+    "hints": {
+      "name": "",
+      "id": "",
+      "dataField": "",
+      "type": "search",
+      "autocomplete": "",
+      "placeholder": "Buscar",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "ignored",
+      "reason": "unsupported_type"
+    }
+  },
+  {
+    "id": "password_ignorado",
+    "hints": {
+      "name": "senha",
+      "id": "",
+      "dataField": "",
+      "type": "password",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "ignored",
+      "reason": "unsupported_type"
+    }
+  },
+  {
+    "id": "file_ignorado",
+    "hints": {
+      "name": "anexo",
+      "id": "",
+      "dataField": "",
+      "type": "file",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "ignored",
+      "reason": "unsupported_type"
+    }
+  },
+  {
+    "id": "sem_pista",
+    "hints": {
+      "name": "xyz123",
+      "id": "",
+      "dataField": "",
+      "type": "",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "ignored",
+      "reason": "no_mapping"
+    }
+  },
+  {
+    "id": "busca_sem_identidade_servicos",
+    "hints": {
+      "name": "",
+      "id": "",
+      "dataField": "",
+      "type": "text",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": "encontre o servico que precisa"
+    },
+    "valueVaries": false,
+    "expected": {
+      "type": "ignored",
+      "reason": "unsupported_type"
+    }
+  },
+  {
+    "id": "data_nativa",
+    "hints": {
+      "name": "startDate",
+      "id": "",
+      "dataField": "",
+      "type": "date",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": true,
+    "expected": {
+      "type": "ignored",
+      "reason": "no_mapping"
+    }
+  },
+  {
+    "id": "data_texto_inicio",
+    "hints": {
+      "name": "dataInicio",
+      "id": "",
+      "dataField": "",
+      "type": "text",
+      "autocomplete": "",
+      "placeholder": "",
+      "ariaLabel": "",
+      "label": "",
+      "contextText": ""
+    },
+    "valueVaries": true,
+    "expected": {
+      "type": "mapped",
+      "key": "fallback_start_date",
+      "value": "2026-10-26"
+    }
+  }
+]

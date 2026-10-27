@@ -125,3 +125,11 @@ scripts/check-*.ts
 cloud-run-app/scripts/*.ts
 *TESTE*
 update_templates.sql
+
+# Kit portátil: material local e de trabalho (navegador baixado, saídas de execuções reais, configuração e notas internas)
+portable-local/browsers/
+portable-local/saidas/
+portable-local/config/jornadas.csv
+portable-local/HANDOFF.md
+portable-local/docs/
+portable-local/*.tmp

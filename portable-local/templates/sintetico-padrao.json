@@ -1,0 +1,127 @@
+{
+  "name": "Sintetico padrao (portable)",
+  "createdBy": "consultoria-crawler-tag",
+  "data": {
+    "keys": [
+      {
+        "key": "nome",
+        "value": "Teste Sintetico",
+        "matchers": {
+          "attributes": [
+            "nome",
+            "name",
+            "fullname"
+          ],
+          "labels": [
+            "nome completo",
+            "nome"
+          ]
+        }
+      },
+      {
+        "key": "email",
+        "value": "teste.sintetico@example.test",
+        "matchers": {
+          "types": [
+            "email"
+          ],
+          "attributes": [
+            "email",
+            "mail"
+          ],
+          "autocomplete": [
+            "email"
+          ]
+        }
+      },
+      {
+        "key": "cpf",
+        "value": "111.444.777-35",
+        "matchers": {
+          "attributes": [
+            "cpf"
+          ],
+          "labels": [
+            "cpf"
+          ]
+        }
+      },
+      {
+        "key": "telefone",
+        "value": "(11) 91234-5678",
+        "matchers": {
+          "types": [
+            "tel"
+          ],
+          "attributes": [
+            "telefone",
+            "celular",
+            "phone"
+          ],
+          "autocomplete": [
+            "tel"
+          ]
+        }
+      },
+      {
+        "key": "cep",
+        "value": "01001-000",
+        "matchers": {
+          "attributes": [
+            "cep",
+            "zipcode"
+          ],
+          "autocomplete": [
+            "postal-code"
+          ]
+        }
+      },
+      {
+        "key": "valor_mensal",
+        "value": "250",
+        "matchers": {
+          "attributes": [
+            "monthlyvalue",
+            "valor"
+          ]
+        }
+      },
+      {
+        "key": "aceite_lgpd",
+        "value": "true",
+        "matchers": {
+          "types": [
+            "checkbox"
+          ],
+          "attributes": [
+            "lgpd",
+            "aceite",
+            "termo"
+          ],
+          "labels": [
+            "li e estou de acordo",
+            "estou de acordo",
+            "condições gerais",
+            "termos de uso",
+            "autorizo o uso dos meus dados"
+          ]
+        }
+      },
+      {
+        "key": "numero",
+        "value": "1000",
+        "matchers": {
+          "labels": [
+            "número",
+            "numero"
+          ],
+          "attributes": [
+            "numero",
+            "number",
+            "numero_endereco"
+          ]
+        }
+      }
+    ]
+  }
+}
