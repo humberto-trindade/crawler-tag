@@ -102,6 +102,13 @@ class ConfiguracaoTest(unittest.TestCase):
         self.assertEqual(lista[0]["id"], "servicos")
         self.assertTrue(lista[0]["ativo_bool"])
 
+    def test_url_de_compra_vira_guarda_no_payload(self) -> None:
+        jornadas.salvar_jornada(_linha(ponto_compra="https://www.exemplo.test/loja/dados"), path=self.path)
+        payload = jornadas.config_execucao(jornadas.jornada_por_id("seguro-viagem", self.path))
+        self.assertEqual(payload["purchaseUrls"], ["https://www.exemplo.test/loja/dados"])
+        with self.assertRaises(ValueError):
+            jornadas.salvar_jornada(_linha(ponto_compra="dados"), path=self.path)
+
     def test_payload_de_execucao(self) -> None:
         jornada = jornadas.salvar_jornada(_linha(dominios="www.exemplo.test, outro.test"), path=self.path)
         payload = jornadas.config_execucao(jornadas.jornada_por_id("seguro-viagem", self.path))
@@ -161,6 +168,9 @@ class SaidasTest(unittest.TestCase):
         resumo = (self.saidas / "resumo.csv").read_text(encoding="utf-8-sig")
         self.assertIn("jornada_id", resumo.splitlines()[0])
         self.assertIn("11111111-aaaa", resumo)
+        # a própria pasta da jornada também traz o histórico (é onde o usuário procura)
+        resumo_jornada = (pasta / "resumo.csv").read_text(encoding="utf-8-sig")
+        self.assertIn("11111111-aaaa", resumo_jornada)
 
     def test_csv_de_eventos_tem_uma_linha_por_evento(self) -> None:
         jornadas.gravar_saida(_record("22222222-aaaa", ["ga4", "meta_pixel"]),

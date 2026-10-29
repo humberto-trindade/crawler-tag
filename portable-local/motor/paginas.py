@@ -12,7 +12,7 @@ import logging
 import re
 import time
 from typing import Any, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 log = logging.getLogger("crawler-tag-portable")
 
@@ -296,6 +296,24 @@ PURCHASE_TEXT_RE = re.compile(
     re.I,
 )
 PURCHASE_URL_RE = re.compile(r"/(checkout|pagamento|pagamentos|carrinho|cesta|comprar)(/|\?|$)", re.I)
+# URLs onde o avanço é a compra (informadas na jornada): o motor preenche, mas não clica em nenhum botão de avanço.
+COMPRA_URLS: set[str] = set()
+
+
+def definir_urls_de_compra(urls: list[str]) -> None:
+    COMPRA_URLS.clear()
+    COMPRA_URLS.update(_url_sem_query(u) for u in urls if u)
+
+
+def _url_sem_query(url: str) -> str:
+    parsed = urlparse((url or "").strip())
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{parsed.path.rstrip('/') or '/'}"
+
+
+def em_url_de_compra(page: Any) -> bool:
+    return bool(COMPRA_URLS) and _url_sem_query(page.url) in COMPRA_URLS
+
+
 PAYMENT_FIELD_RE = re.compile(r"(card|cart[aã]o|cvv|cvc|csc|validade|expiry|cc-number|cc-csc|cc-exp)", re.I)
 
 JS_FIND_BEST_CTA = r"""
@@ -315,7 +333,7 @@ JS_FIND_BEST_CTA = r"""
     const visible = rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     if (!visible) return false;
     const disabled = node.hasAttribute("disabled") || node.getAttribute("aria-disabled") === "true" ||
-      node.classList.contains("disabled") || style.pointerEvents === "none";
+      Array.from(node.classList).some((c) => /disabled/.test(c)) || style.pointerEvents === "none";
     return !disabled;
   };
   let best = null;
@@ -332,7 +350,7 @@ JS_FIND_BEST_CTA = r"""
     let score = 0;
     if (/(seguir|continuar|avançar|avancar|pr[oó]ximo|proximo|cotação|cotacao|contratar|simular|finalizar|agendar)/.test(text)) score += 45;
     if (/(ver quanto custa|ver proposta|atualizar cesta|adicionar ou editar produtos)/.test(text)) score += 42;
-    if (/(quero este|quero essa|quero esta|escolher|selecionar|contratar este|comprar agora)/.test(text)) score += 38;
+    if (/(quero este|quero essa|quero esta|escolher|selecionar|contratar este|comprar agora|compre agora)/.test(text)) score += 38;
     if (/(seguir com a cota[cç][aã]o|seguir com essa cota[cç][aã]o|seguir com esta cota[cç][aã]o)/.test(text)) score += 35;
     if (/(ve[ií]culo.*0\s*km|0\s*km.*sem\s*placa|sem\s*placa|n[aã]o\s*sei\s*a\s*placa|consultar\s*placa|pesquisar\s*ve[ií]culo)/.test(text)) score += 38;
     if (/(voltar|fechar|cancelar|sair|ajuda|parceiros|área do cliente|area do cliente)/.test(text)) score -= 55;
@@ -775,6 +793,33 @@ def marcar_termos_customizados(page: Any) -> bool:
     return False
 
 
+AVANCAR_RE = re.compile(r"^(continuar|avançar|avancar|próximo|proximo)$", re.I)
+
+
+def escolher_item_em_modal(page: Any) -> bool:
+    """Modal que exige escolher ao menos um item (ex.: "Selecione até 3 serviços", contador com "+").
+
+    Só age se o botão de avanço estiver desabilitado: clica uma vez no primeiro controle de adicionar item.
+    """
+    try:
+        avancar = page.locator("button:visible", has_text=AVANCAR_RE)
+        if not avancar.count():
+            return False
+        botao = avancar.first
+        if not (botao.is_disabled() or "disabled" in (botao.get_attribute("class") or "").lower()):
+            return False
+        mais = page.locator("[aria-label*='adicionar item' i]:visible, [aria-label*='aumentar' i]:visible, "
+                            "[aria-label*='increase' i]:visible")
+        if not mais.count():
+            return False
+        mais.first.click(timeout=1_500)
+        page.wait_for_timeout(500)
+        log.info("Item escolhido em modal para habilitar o avanço")
+        return True
+    except Exception:
+        return False
+
+
 def preencher_dropdowns_customizados(page: Any) -> int:
     """Dropdowns somente leitura (ex.: tamanho do sofá) não recebem fill: abre e escolhe a primeira opção."""
     escolhidos = 0
@@ -838,6 +883,9 @@ def diagnose_click_effect(page: Any) -> dict[str, Any]:
 
 def click_best_dynamic_cta(page: Any, excluded_texts: Optional[list[str]] = None, min_score: int = 8) -> dict[str, Any]:
     excluded_texts = excluded_texts or []
+    if em_url_de_compra(page):
+        log.info("Guarda de compra: nenhum botão de avanço é clicado em %s", page.url)
+        return {"clicked": False, "failureReason": "purchase_guard"}
     log.info("Dynamic CTA search start (excluded=%s)", len([t for t in excluded_texts if t]))
     normalized_excluded = [t.lower().strip() for t in excluded_texts if t and t.strip()]
     candidates = page.locator(DYNAMIC_CTA_SELECTOR)
@@ -977,7 +1025,7 @@ def _score_cta_text_fallback(text: str) -> int:
         score += 45
     if re.search(r"(ver quanto custa|ver proposta|atualizar cesta|adicionar ou editar produtos)", text):
         score += 42
-    if re.search(r"(quero este|quero essa|quero esta|escolher|selecionar|contratar este|comprar agora)", text):
+    if re.search(r"(quero este|quero essa|quero esta|escolher|selecionar|contratar este|comprar agora|compre agora)", text):
         score += 38
     if re.search(r"(seguir com a cota[cç][aã]o|seguir com essa cota[cç][aã]o|seguir com esta cota[cç][aã]o)", text):
         score += 35

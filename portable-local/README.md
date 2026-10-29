@@ -56,7 +56,7 @@ Para encerrar o servidor, use `Ctrl+C` na janela do inicializador.
 **Durante a execução o crawler:**
 - navega em largura (BFS) respeitando profundidade, máximo de estados e de ações e domínios permitidos;
 - aceita banners de consentimento;
-- preenche formulários, modais e assistentes em várias etapas com **dados sintéticos** do template (e-mails só em domínio de teste);
+- preenche formulários, modais e assistentes em várias etapas com **dados sintéticos** do template (e-mails só em domínio de teste); em modais que exigem escolher um item (ex.: "Selecione até 3 serviços"), escolhe o primeiro para habilitar o avanço;
 - clica em CTAs e botões de avançar, mas **para antes de compra e pagamento**: botões e URLs de compra não são acionados e telas com campos de cartão encerram o avanço;
 - detecta GA4/GTM, Meta Pixel, Google Ads, TikTok, LinkedIn, Clarity/Hotjar e outras requisições de tracking, com parâmetros sanitizados (token, cookie, e-mail e telefone são mascarados);
 - registra CAPTCHA, WAF/Cloudflare e downloads como avisos, sem explorar essas rotas;
@@ -68,7 +68,8 @@ Para encerrar o servidor, use `Ctrl+C` na janela do inicializador.
 
 ## Jornadas monitoradas (recomendado)
 
-- **Cadastro:** a página inicial lista as jornadas de `config\jornadas.csv`. Crie ou edite pelo formulário. O arquivo abre no Excel (separador `;`, UTF-8 com BOM). Este arquivo é local e não vai para o Git; o modelo é `config\jornadas.exemplo.csv`.
+- **Interface em abas:** *1. Jornadas* (lista e botão **Executar agora**), *2. Cadastro*, *3. Resultados* e *Execução avulsa*. Ao executar, uma faixa fixa no topo mostra o andamento (cronômetro, etapa atual, telas, ações e eventos) em qualquer aba; ao terminar, o botão **Ver resultado** abre a aba Resultados. Se a página for recarregada durante uma execução, o acompanhamento é retomado.
+- **Cadastro:** a aba Jornadas lista as jornadas de `config\jornadas.csv`. Crie ou edite pela aba Cadastro. O arquivo abre no Excel (separador `;`, UTF-8 com BOM). Este arquivo é local e não vai para o Git; o modelo é `config\jornadas.exemplo.csv`.
 - **Execução automática:** `python executar_jornadas.py` roda as jornadas ativas cujo intervalo já passou (`--so <id>` roda uma respeitando o intervalo; `--forcar <id>` ignora o intervalo). Para rodar de hora em hora no Windows, crie uma tarefa no Agendador de Tarefas com ação `python`, argumentos `executar_jornadas.py` e "Iniciar em" a pasta `portable-local`. O Chromium instalado pelo `INICIAR.bat` é encontrado automaticamente.
 - **Modo URL única:** explora só a página da jornada e seus botões (CTAs), sem seguir links do site.
 
@@ -95,6 +96,8 @@ Status de cada ponto:
 
 `criterio_nao_localizado`, `indistinguivel`, `blocked` e `not_reached` **não indicam pixel quebrado**.
 
+**Compra (guarda, não é medida):** informe em `ponto_compra` a URL em que o avanço é a compra (ex.: o botão Continuar da etapa de dados). Nessa URL o crawler preenche os campos, mas **não clica em nenhum botão de avanço**, e registra o aviso `purchase_guard`. Além disso, botões e URLs de compra/pagamento e telas com campos de cartão nunca são acionados.
+
 **Como descobrir o critério certo:** se você sabe que precisa, por exemplo, "o passo 3" mas não sabe como identificá-lo, execute a jornada sem critério (ou com um critério provisório). O arquivo de estados traz a **jornada completa em ordem**, inclusive telas sem nenhum pixel (eventos = 0), com os eventos Meta de cada tela. Escolha nele a etapa, o título ou o evento e preencha o ponto.
 
 ## Onde ficam os resultados
@@ -102,7 +105,8 @@ Status de cada ponto:
 - `saidas\<jornada>\<data_hora>_<execução>.csv`: um evento por linha (abre no Excel).
 - `saidas\<jornada>\<data_hora>_<execução>_estados.csv`: a jornada em ordem, um registro por tela (URL, rótulo, passo, eventos, eventos Meta e seus nomes, tecnologias, ponto associado).
 - `saidas\<jornada>\<data_hora>_<execução>_pontos.csv`: status de cada ponto, tela localizada e detalhe.
-- `saidas\<jornada>\<data_hora>_<execução>.json`: registro completo.
+- `saidas\<jornada>\<data_hora>_<execução>.json`: registro técnico completo (grande; serve para auditoria, não precisa ser aberto no uso normal).
+- `saidas\<jornada>\resumo.csv`: histórico só daquela jornada (mesmas colunas do resumo geral).
 - `saidas\resumo.csv`: uma linha por execução, com tecnologias novas e ausentes em relação à execução anterior da mesma jornada e o status de cada ponto.
 - `data\<id>.json` e `exports\execution-<id>.json | .csv | .html | .pdf`: execução avulsa e seus relatórios.
 - `logs\portable-<data-hora>.log`: um arquivo por inicialização, sem cookies nem credenciais.

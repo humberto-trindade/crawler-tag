@@ -36,6 +36,7 @@ JORNADA_COLUMNS = [
     "ponto_pdp_etapa", "ponto_shortform_etapa", "ponto_lead_intent_etapa",
     "ponto_pdp_titulo", "ponto_shortform_titulo", "ponto_lead_intent_titulo",
     "ponto_pdp_evento", "ponto_shortform_evento", "ponto_lead_intent_evento",
+    "ponto_compra",
 ]
 # Pontos de medição do pixel Meta: (chave, rótulo). Compras fica fora do escopo (após o pagamento).
 PONTOS = [("pdp", "PDP"), ("shortform", "Shortform"), ("lead_intent", "Lead intent")]
@@ -159,7 +160,18 @@ def validate_jornada(raw: dict[str, Any]) -> dict[str, str]:
         "intervalo_horas": f"{intervalo:g}".replace(".", ","),
         "observacoes": str(raw.get("observacoes", "") or "").strip(),
         **_pontos_normalizados(raw),
+        "ponto_compra": _url_de_compra(raw),
     }
+
+
+def _url_de_compra(raw: dict[str, Any]) -> str:
+    """URL em que o avanço é a compra: não é medida; o crawler preenche, mas não clica em avançar nela."""
+    url = str(raw.get("ponto_compra", "") or "").strip()
+    if url:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            raise ValueError("ponto Compra: use uma URL http ou https")
+    return url
 
 
 def _pontos_normalizados(raw: dict[str, Any]) -> dict[str, str]:
@@ -325,6 +337,7 @@ def config_execucao(jornada: dict[str, Any]) -> dict[str, Any]:
         "template": jornada.get("template") or "sintetico-padrao",
         "browserMode": jornada.get("navegador") or "headless",
         "jornadaId": jornada["id"],
+        "purchaseUrls": [jornada["ponto_compra"]] if jornada.get("ponto_compra") else [],
     }
 
 
@@ -450,6 +463,8 @@ def gravar_saida(record: dict[str, Any], agora: datetime | None = None,
     }
     _gravar_pontos(pasta / f"{base}_pontos.csv", pontos)
     _append_csv(saidas_dir / "resumo.csv", RESUMO_COLUMNS, linha)
+    # histórico da própria jornada, ao lado dos arquivos de cada execução
+    _append_csv(pasta / "resumo.csv", RESUMO_COLUMNS, linha)
     return linha
 
 

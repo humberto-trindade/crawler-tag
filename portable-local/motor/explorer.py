@@ -33,7 +33,9 @@ from .fieldmapper import FieldHints, resolve_field_mapping_from_hints
 from .paginas import (
     JS_ANCHOR_META,
     PURCHASE_URL_RE,
+    definir_urls_de_compra,
     has_travel_form,
+    escolher_item_em_modal,
     preencher_dropdowns_customizados,
     marcar_termos_customizados,
     JS_MOTO_CHECKBOX_INDEX,
@@ -201,6 +203,7 @@ class ExplorerRun:
         self.ignored_warning_keys: set[tuple[str, str, str]] = set()
         self.last_snapshot_at = 0.0
         self.template_keys: list[dict[str, Any]] = config.get("templateKeys", [])
+        definir_urls_de_compra(config.get("purchaseUrls", []))
         self.global_single_url = bool(config.get("singleUrlMode"))
 
     # ------------------------------------------------------------------ utilidades
@@ -227,6 +230,11 @@ class ExplorerRun:
             return
         self.screens_visited.append({"ordem": len(self.screens_visited) + 1, "stateName": state_name,
                                      "timestamp": now_iso(), "eventosAteAqui": len(self.events)})
+
+    def _avisar_guarda_de_compra(self, url: str) -> None:
+        mensagem = f"Parada antes da compra: URL de compra da jornada, nenhum botão de avanço foi clicado em {url}"
+        if not any(w.get("type") == "purchase_guard" and w.get("message") == mensagem for w in self.warnings):
+            self.warnings.append({"type": "purchase_guard", "message": mensagem})
 
     def _publish(self, phase: str, current_url: str, message: str) -> None:
         if not self.on_progress:
@@ -1138,9 +1146,13 @@ class ExplorerRun:
                                   ctx.active_state_name, ctx.active_state_name, page.url)
             ctx.active_action_id = button["id"]
             url_before = page.url
+            escolher_item_em_modal(page)
             result = click_best_dynamic_cta(page, clicked_texts)
             navigated = bool(page.url) and page.url != url_before
             reason = result.get("failureReason")
+            if reason == "purchase_guard":
+                self._avisar_guarda_de_compra(page.url)
+                break
             if reason == "payment_screen":
                 break
             if reason and not navigated:

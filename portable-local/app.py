@@ -137,7 +137,8 @@ def list_executions() -> list[dict]:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue
-        rows.append({k: data.get(k) for k in ("id", "url", "status", "createdAt", "endedAt")})
+        data = EXECUTIONS.get(data.get("id"), data)  # a cópia em memória é a atual; o arquivo pode estar defasado
+        rows.append({k: data.get(k) for k in ("id", "url", "status", "createdAt", "endedAt", "jornadaId", "jornadaNome")})
     return sorted(rows, key=lambda r: r.get("createdAt") or "", reverse=True)
 
 
@@ -373,6 +374,7 @@ def create_execution(payload: dict) -> tuple[str, dict]:
         "urls": url_configs,
         "templateKeys": template["keys"],
         "singleUrlMode": False,
+        "purchaseUrls": [str(u) for u in payload.get("purchaseUrls", []) if u],
         "browserMode": browser_mode if browser_mode in ("headless", "visual") else "headless",
     }
     execution_id = str(uuid.uuid4())
@@ -557,38 +559,89 @@ def _pdf_escape(text: str) -> str:
 
 # ---------------------------------------------------------------- interface
 
-PAGE = """<!doctype html><meta charset="utf-8"><title>Crawler Tag - Jornadas</title>
-<style>body{font:15px Arial;max-width:1000px;margin:24px auto;padding:0 16px}
-label{display:block;margin-top:8px}input,select,textarea{padding:6px;margin-top:2px;box-sizing:border-box}
-input[type=text],input[type=number],select,textarea{width:100%}button{padding:8px 12px;margin:10px 6px 0 0}
-pre{background:#f3f3f3;padding:12px;white-space:pre-wrap;max-height:300px;overflow:auto}
-table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px}td,th{border:1px solid #ccc;padding:5px;text-align:left;vertical-align:top}
-th{background:#f0f0f0}.row{display:flex;gap:12px;flex-wrap:wrap}.row>label{flex:1;min-width:130px}
-.msg{color:#a00}.ok{color:#060}.muted{color:#666;font-size:13px}a{margin-right:8px}</style>
-<h1>Crawler Tag - monitoramento de jornadas</h1>
-<p class="muted">Configuração: <code>config/jornadas.csv</code> (abre no Excel). Saídas por execução: <code>saidas/&lt;jornada&gt;/</code>, com resumo em <code>saidas/resumo.csv</code>.</p>
+PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crawler Tag - Jornadas</title>
+<style>
+:root{--azul:#0a4d9c;--borda:#d5dce6;--ok:#0a7a35;--erro:#b3261e;--aviso:#a15c00;--fundo:#f4f6fa}
+*{box-sizing:border-box}
+body{font:15px "Segoe UI",Arial,sans-serif;margin:0;background:var(--fundo);color:#1c2733}
+header{background:var(--azul);color:#fff;padding:14px 24px}
+header h1{font-size:20px;margin:0}header p{margin:2px 0 0;font-size:13px;opacity:.85}
+main{max-width:1100px;margin:0 auto;padding:0 16px 40px}
+#status{position:sticky;top:0;z-index:10;display:none;margin:12px 0;padding:12px 16px;border-radius:10px;border:1px solid var(--borda);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#status.on{display:block}
+#status.rodando{border-left:8px solid var(--azul)}#status.ok{border-left:8px solid var(--ok);background:#eef9f1}
+#status.erro{border-left:8px solid var(--erro);background:#fdeeed}#status.aviso{border-left:8px solid var(--aviso);background:#fff6e5}
+#status .t{font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
+#status .d{margin-top:4px;font-size:13px;color:#415062;word-break:break-all}
+#status .c{margin-top:6px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
+#status .c b{font-size:16px}
+.spin{width:18px;height:18px;border:3px solid #bcd0ea;border-top-color:var(--azul);border-radius:50%;animation:g 0.9s linear infinite;display:none}
+#status.rodando .spin{display:inline-block}
+@keyframes g{to{transform:rotate(360deg)}}
+.bar{height:5px;background:#dbe4f1;border-radius:4px;margin-top:8px;overflow:hidden;display:none}
+#status.rodando .bar{display:block}.bar i{display:block;height:100%;width:35%;background:var(--azul);animation:m 1.4s ease-in-out infinite}
+@keyframes m{0%{margin-left:-35%}100%{margin-left:100%}}
+nav{display:flex;gap:4px;border-bottom:2px solid var(--borda);margin:10px 0 0;flex-wrap:wrap}
+nav button{background:none;border:0;padding:10px 16px;font-size:15px;cursor:pointer;color:#415062;border-bottom:3px solid transparent;margin:0 0 -2px}
+nav button.on{color:var(--azul);border-bottom-color:var(--azul);font-weight:700}
+.painel{display:none;background:#fff;border:1px solid var(--borda);border-top:0;border-radius:0 0 10px 10px;padding:16px 18px}
+.painel.on{display:block}
+h2{font-size:18px;margin:0 0 4px}h3{font-size:15px;margin:18px 0 4px}
+label{display:block;margin-top:8px;font-size:13px;color:#415062}
+input,select,textarea{padding:7px;margin-top:2px;box-sizing:border-box;border:1px solid #b9c4d3;border-radius:6px;font:inherit}
+input[type=text],input[type=number],select,textarea{width:100%}
+input[type=checkbox]{margin-right:6px}
+button.p{background:var(--azul);color:#fff;border:0;border-radius:6px;padding:8px 14px;margin:10px 6px 0 0;cursor:pointer;font:inherit}
+button.s{background:#fff;color:var(--azul);border:1px solid var(--azul);border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit}
+button:disabled{opacity:.45;cursor:not-allowed}
+table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px}
+td,th{border-bottom:1px solid #e3e8ef;padding:7px 6px;text-align:left;vertical-align:top}
+th{background:#f0f3f8;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:#415062}
+tr.rodando td{background:#eaf2ff}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>label{flex:1;min-width:150px}
+.msg{color:var(--erro)}.ok{color:var(--ok)}.muted{color:#5d6b7c;font-size:13px}
+details{margin-top:14px;border:1px solid var(--borda);border-radius:8px;padding:8px 12px}
+summary{cursor:pointer;font-weight:600}
+a{color:var(--azul);margin-right:10px}
+.arq a{display:inline-block;margin:2px 8px 2px 0}
+.leg{background:#f6f8fc;border:1px solid var(--borda);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
+pre{background:#f3f3f3;padding:12px;white-space:pre-wrap;max-height:260px;overflow:auto}
+</style>
+<header><h1>Crawler Tag · monitoramento de jornadas</h1>
+<p>Cadastre a jornada, execute e consulte o resultado nas abas abaixo.</p></header>
+<main>
+<div id="status"><div class="t"><span class="spin"></span><span id="st-titulo"></span></div>
+<div class="d" id="st-det"></div><div class="c" id="st-cont"></div><div class="bar"><i></i></div>
+<div style="margin-top:8px"><button class="s" id="st-ver" style="display:none">Ver resultado</button>
+<button class="s" id="st-parar" style="display:none">Interromper execução</button></div></div>
 
+<nav id="abas">
+<button data-aba="jornadas" class="on">1. Jornadas</button>
+<button data-aba="cadastro">2. Cadastro</button>
+<button data-aba="resultados">3. Resultados</button>
+<button data-aba="avulsa">Execução avulsa</button>
+</nav>
+
+<section class="painel on" id="p-jornadas">
 <h2>Jornadas monitoradas</h2>
+<p class="muted">Clique em <b>Executar agora</b>. O andamento aparece na faixa fixa no topo da página e, ao terminar, o botão <b>Ver resultado</b> leva à aba Resultados.</p>
 <table id="jornadas"><tr><td>Carregando...</td></tr></table>
-<h3 id="form-title">Nova jornada</h3>
+<p><button class="p" id="nova-top">+ Cadastrar nova jornada</button></p>
+</section>
+
+<section class="painel" id="p-cadastro">
+<h2 id="form-title">Nova jornada</h2>
 <form id="jform">
 <div class="row">
 <label>Identificador (ex.: seguro-viagem)<input type="text" id="j-id" required></label>
 <label>Nome<input type="text" id="j-nome"></label>
 </div>
-<label>URL inicial<input type="text" id="j-url" required></label>
-<div class="row">
-<label>Profundidade (0 a 5)<input type="number" id="j-profundidade" value="0" min="0" max="5"></label>
-<label>Máx. estados<input type="number" id="j-estados" value="12" min="1"></label>
-<label>Máx. ações<input type="number" id="j-acoes" value="120" min="1"></label>
-<label>Intervalo entre execuções (horas)<input type="text" id="j-intervalo" value="6"></label>
-</div>
-<label>Domínios permitidos (separados por vírgula, vazio = domínio da URL)<input type="text" id="j-dominios"></label>
-<h4>Pontos de medição do pixel Meta (URL de cada ponto que a jornada deve passar; vazio = não medido)</h4>
-<p class="muted">Cada ponto é uma URL e, para separar telas na mesma URL, um critério combinado: <b>etapa</b> (passo visível, ex.: <code>3 de 3</code>),
-<b>título</b> da tela (ex.: <code>Informe seus dados</code>) e, se quiser, o <b>evento Meta esperado</b> (ex.: <code>Lead</code>). Os campos preenchidos valem juntos.
-Se o critério não for encontrado, o ponto fica como <b>critério não localizado</b> e o arquivo de <b>Estados</b> traz a jornada completa em ordem, com os eventos de cada tela, para ajustar o cadastro.
-Dois pontos com a mesma URL e o mesmo critério aparecem como <b>indistinguivel</b>.</p>
+<label>URL inicial (PDP da jornada)<input type="text" id="j-url" required></label>
+
+<h3>Pontos de medição do pixel Meta</h3>
+<p class="muted">Informe a URL de cada ponto (vazio = não medido). Para separar telas na mesma URL, combine <b>etapa</b> (ex.: <code>3 de 3</code>),
+<b>título</b> da tela e <b>evento Meta</b> esperado (ex.: <code>Lead</code>); o que for preenchido vale em conjunto.
+Se o critério não for achado, o ponto fica como <i>critério não localizado</i> e o arquivo de Estados traz a jornada completa para ajustar o cadastro.</p>
 <div class="row"><label>PDP (página de produto)<input type="text" id="j-pdp"></label>
 <label>Etapa<input type="text" id="j-pdp_etapa"></label>
 <label>Título da tela<input type="text" id="j-pdp_titulo"></label>
@@ -601,38 +654,65 @@ Dois pontos com a mesma URL e o mesmo critério aparecem como <b>indistinguivel<
 <label>Etapa<input type="text" id="j-lead_intent_etapa"></label>
 <label>Título da tela<input type="text" id="j-lead_intent_titulo"></label>
 <label>Evento Meta<input type="text" id="j-lead_intent_evento"></label></div>
+<label>Compra: URL em que avançar é a compra (não é medida e o crawler <b>não clica em avançar</b> nela)<input type="text" id="j-compra"></label>
+
+<details><summary>Opções avançadas (limites, agendamento, navegador)</summary>
+<div class="row">
+<label>Profundidade (0 a 5)<input type="number" id="j-profundidade" value="0" min="0" max="5"></label>
+<label>Máx. estados<input type="number" id="j-estados" value="12" min="1"></label>
+<label>Máx. ações<input type="number" id="j-acoes" value="120" min="1"></label>
+<label>Intervalo entre execuções (horas)<input type="text" id="j-intervalo" value="6"></label>
+</div>
+<label>Domínios permitidos (separados por vírgula, vazio = domínio da URL)<input type="text" id="j-dominios"></label>
 <div class="row">
 <label>Template de preenchimento<select id="j-template"></select></label>
 <label>Navegador<select id="j-navegador"><option value="headless">headless</option><option value="visual">visual</option></select></label>
 </div>
-<label><input type="checkbox" id="j-unica"> Modo URL única (explora só esta página e seus CTAs)</label>
-<label><input type="checkbox" id="j-ativo" checked> Ativa (entra na execução automática)</label>
+<label><input type="checkbox" id="j-unica">Modo URL única (explora só esta página e seus CTAs)</label>
+<label><input type="checkbox" id="j-ativo" checked>Ativa (entra na execução automática)</label>
 <label>Observações<textarea id="j-obs" rows="2"></textarea></label>
-<button>Salvar jornada</button><button type="button" id="j-novo">Nova</button>
+</details>
+<button class="p">Salvar jornada</button><button type="button" class="s" id="j-novo">Limpar</button>
 <p id="jmsg"></p>
 </form>
+</section>
 
-<h2>Resultados</h2>
+<section class="painel" id="p-resultados">
+<h2>Resultados das execuções</h2>
+<div class="leg"><b>Onde ficam os arquivos:</b> pasta <code>saidas\\&lt;jornada&gt;\\</code> (um conjunto por execução, mais o <code>resumo.csv</code> daquela jornada) e <code>saidas\\resumo.csv</code> com todas as jornadas.
+<b>Pontos</b> = veredito de cada ponto de medição · <b>Estados</b> = telas da jornada em ordem, com os eventos de cada uma · <b>Eventos</b> = todos os disparos, um por linha · <b>JSON técnico</b> = registro bruto completo (para auditoria; não precisa abrir).</div>
 <label>Mostrar jornada<select id="filtro"><option value="">Todas</option></select></label>
 <table id="resumo"><tr><td>Sem execuções ainda.</td></tr></table>
+</section>
 
+<section class="painel" id="p-avulsa">
 <h2>Execução avulsa</h2>
+<p class="muted">Explora uma URL qualquer sem cadastrar jornada (sem pontos de medição).</p>
 <form id="form">
-<label>URL inicial<input type="text" id="url" value="https://www.portoseguro.com.br/servicos" required></label>
+<label>URL inicial<input type="text" id="url" placeholder="https://www.exemplo.com.br/" required></label>
 <div class="row">
 <label>Profundidade<input type="number" id="depth" value="1" min="0" max="5"></label>
 <label>Máx. estados<input type="number" id="states" value="30" min="1" max="10000"></label>
 <label>Máx. ações<input type="number" id="actions" value="60" min="1" max="10000"></label>
 </div>
-<label><input type="checkbox" id="single"> Modo URL única</label>
-<button>Executar</button> <button type="button" id="stop">Interromper</button>
+<label><input type="checkbox" id="single">Modo URL única</label>
+<button class="p" id="btn-avulsa">Executar</button>
 </form>
-<pre id="output">Pronto.</pre>
+</section>
+</main>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\'':'&#39;'}[c]));
-let timer = null, currentId = null, jornadasCache = [];
+let timer = null, currentId = null, currentJid = '', jornadasCache = [], inicio = 0, rodandoJid = null;
+
+function aba(nome) {
+  document.querySelectorAll('#abas button').forEach(b => b.classList.toggle('on', b.dataset.aba === nome));
+  document.querySelectorAll('.painel').forEach(p => p.classList.toggle('on', p.id === 'p-' + nome));
+  if (nome === 'resultados') carregarResumo();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('#abas button').forEach(b => b.onclick = () => aba(b.dataset.aba));
 
 fetch('/api/templates').then(r => r.json()).then(list => {
   $('#j-template').innerHTML = list.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
@@ -640,7 +720,7 @@ fetch('/api/templates').then(r => r.json()).then(list => {
 
 function limparForm() {
   $('#form-title').textContent = 'Nova jornada';
-  ['#j-id', '#j-nome', '#j-url', '#j-dominios', '#j-obs'].forEach(s => $(s).value = '');
+  ['#j-id', '#j-nome', '#j-url', '#j-dominios', '#j-obs', '#j-compra'].forEach(s => $(s).value = '');
   ['pdp', 'shortform', 'lead_intent'].forEach(k => ['', '_etapa', '_titulo', '_evento'].forEach(s => $('#j-' + k + s).value = ''));
   $('#j-id').disabled = false;
   $('#j-profundidade').value = 0; $('#j-estados').value = 12; $('#j-acoes').value = 120; $('#j-intervalo').value = 6;
@@ -651,6 +731,7 @@ function limparForm() {
 function editar(jid) {
   const j = jornadasCache.find(x => x.id === jid);
   if (!j) return;
+  aba('cadastro');
   $('#form-title').textContent = 'Editar jornada: ' + jid;
   $('#j-id').value = j.id; $('#j-id').disabled = true; $('#j-nome').value = j.nome; $('#j-url').value = j.url;
   $('#j-profundidade').value = j.profundidade; $('#j-estados').value = j.max_estados; $('#j-acoes').value = j.max_acoes;
@@ -661,21 +742,25 @@ function editar(jid) {
     $('#j-' + k).value = j['ponto_' + k] || '';
     ['_etapa', '_titulo', '_evento'].forEach(s => $('#j-' + k + s).value = j['ponto_' + k + s] || '');
   });
-  window.scrollTo(0, 0);
+  $('#j-compra').value = j.ponto_compra || '';
 }
 
 async function carregarJornadas() {
   jornadasCache = await (await fetch('/api/jornadas')).json();
-  const linhas = jornadasCache.map(j => `<tr>
+  const ocupado = !!currentId && timer !== null;
+  const linhas = jornadasCache.map(j => {
+    const rodando = rodandoJid === j.id;
+    return `<tr class="${rodando ? 'rodando' : ''}">
     <td><b>${esc(j.id)}</b><br><span class="muted">${esc(j.nome)}</span></td>
     <td><a href="${esc(j.url)}" target="_blank">${esc(j.url)}</a></td>
     <td>${j.ativo_bool ? 'sim' : 'não'}</td><td>${esc(j.intervalo_horas)} h</td>
-    <td>${esc(j.profundidade)} / ${esc(j.max_estados)} / ${esc(j.max_acoes)}${j.url_unica_bool ? ' (URL única)' : ''}</td>
-    <td><button onclick="editar('${esc(j.id)}')">Editar</button>
-        <button onclick="executar('${esc(j.id)}')">Executar agora</button></td></tr>`).join('');
+    <td><button class="p" onclick="executar('${esc(j.id)}')" ${ocupado ? 'disabled' : ''}>${rodando ? 'Executando...' : 'Executar agora'}</button>
+        <button class="s" onclick="editar('${esc(j.id)}')">Editar</button>
+        <button class="s" onclick="verResultado('${esc(j.id)}')">Resultados</button></td></tr>`;
+  }).join('');
   $('#jornadas').innerHTML = jornadasCache.length
-    ? '<tr><th>Jornada</th><th>URL</th><th>Ativa</th><th>Intervalo</th><th>Prof. / estados / ações</th><th></th></tr>' + linhas
-    : '<tr><td>Nenhuma jornada cadastrada. Preencha o formulário abaixo.</td></tr>';
+    ? '<tr><th>Jornada</th><th>URL</th><th>Ativa</th><th>Intervalo</th><th>Ações</th></tr>' + linhas
+    : '<tr><td>Nenhuma jornada cadastrada. Use "Cadastrar nova jornada".</td></tr>';
   const atual = $('#filtro').value;
   $('#filtro').innerHTML = '<option value="">Todas</option>' +
     jornadasCache.map(j => `<option value="${esc(j.id)}">${esc(j.id)}</option>`).join('');
@@ -697,14 +782,20 @@ async function carregarResumo() {
   const jid = $('#filtro').value;
   const rows = await (await fetch('/api/resumo' + (jid ? '?jornada=' + encodeURIComponent(jid) : ''))).json();
   if (!rows.length) { $('#resumo').innerHTML = '<tr><td>Sem execuções ainda.</td></tr>'; return; }
-  $('#resumo').innerHTML = '<tr><th>Data e hora</th><th>Jornada</th><th>Status</th><th>Estados</th><th>Ações</th>' +
-    '<th>Eventos</th><th>Preench.</th><th>Novas tecnologias</th><th>Ausentes</th><th>Pontos Meta</th><th>Parada</th><th>Arquivos</th></tr>' +
+  $('#resumo').innerHTML = '<tr><th>Data e hora</th><th>Jornada</th><th>Status</th><th>Pontos Meta</th><th>Telas / ações / eventos</th>' +
+    '<th>Novas tecnologias</th><th>Ausentes</th><th>Parada</th><th>Arquivos</th></tr>' +
     rows.map(r => `<tr><td>${esc(r.data_hora)}</td><td>${esc(r.jornada_id)}</td><td>${esc(r.status)}</td>
-      <td>${esc(r.estados)}</td><td>${esc(r.acoes)}</td><td>${esc(r.eventos)}</td><td>${esc(r.preenchimentos)}</td>
-      <td class="ok">${esc(r.tecnologias_novas)}</td><td class="msg">${esc(r.tecnologias_ausentes)}</td>
       <td>${['pdp', 'shortform', 'lead_intent'].map(k => pontoTexto(r['ponto_' + k + '_meta'], r['ponto_' + k + '_url'], k, [r['ponto_' + k + '_etapa'], r['ponto_' + k + '_titulo'], r['ponto_' + k + '_evento']].filter(Boolean).join(' + '), r['ponto_' + k + '_eventos'])).join('<br>')}</td>
+      <td>${esc(r.estados)} / ${esc(r.acoes)} / ${esc(r.eventos)}</td>
+      <td class="ok">${esc(r.tecnologias_novas)}</td><td class="msg">${esc(r.tecnologias_ausentes)}</td>
       <td>${esc(r.parada)}</td>
-      <td><a href="/api/saidas/${esc(r.execucao_id)}/csv">Eventos</a><a href="/api/saidas/${esc(r.execucao_id)}/estados">Estados</a><a href="/api/saidas/${esc(r.execucao_id)}/pontos">Pontos</a><a href="/api/saidas/${esc(r.execucao_id)}/json">JSON</a></td></tr>`).join('');
+      <td class="arq"><a href="/api/saidas/${esc(r.execucao_id)}/pontos">Pontos</a><a href="/api/saidas/${esc(r.execucao_id)}/estados">Estados</a><a href="/api/saidas/${esc(r.execucao_id)}/csv">Eventos</a><a href="/api/saidas/${esc(r.execucao_id)}/json">JSON técnico</a></td></tr>`).join('');
+}
+
+function verResultado(jid) {
+  aba('resultados');
+  $('#filtro').value = jid || '';
+  carregarResumo();
 }
 
 $('#jform').onsubmit = async (e) => {
@@ -716,37 +807,70 @@ $('#jform').onsubmit = async (e) => {
     url_unica: $('#j-unica').checked, ativo: $('#j-ativo').checked, intervalo_horas: $('#j-intervalo').value,
     observacoes: $('#j-obs').value,
     ponto_pdp: $('#j-pdp').value, ponto_shortform: $('#j-shortform').value, ponto_lead_intent: $('#j-lead_intent').value,
+    ponto_compra: $('#j-compra').value,
   };
   ['pdp', 'shortform', 'lead_intent'].forEach(k => ['_etapa', '_titulo', '_evento'].forEach(s => { body['ponto_' + k + s] = $('#j-' + k + s).value; }));
   const r = await fetch('/api/jornadas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const x = await r.json();
   if (!r.ok) { $('#jmsg').className = 'msg'; $('#jmsg').textContent = x.error; return; }
-  $('#jmsg').className = 'ok'; $('#jmsg').textContent = 'Jornada salva: ' + x.id;
   limparForm(); await carregarJornadas();
+  aba('jornadas');
+  mostrarStatus('ok', 'Jornada salva: ' + x.id, 'Clique em "Executar agora" na linha dela para rodar.', '', false);
+  setTimeout(() => { if (!timer && !$('#st-ver').dataset.jid) $('#status').className = ''; }, 6000);
 };
 $('#j-novo').onclick = limparForm;
+$('#nova-top').onclick = () => { limparForm(); aba('cadastro'); };
 $('#filtro').onchange = carregarResumo;
+
+function mostrarStatus(classe, titulo, detalhe, contadores, parar, verJid) {
+  $('#status').className = 'on ' + classe;
+  $('#st-titulo').textContent = titulo;
+  $('#st-det').textContent = detalhe || '';
+  $('#st-cont').innerHTML = contadores || '';
+  $('#st-parar').style.display = parar ? 'inline-block' : 'none';
+  const ver = $('#st-ver');
+  ver.style.display = verJid === undefined ? 'none' : 'inline-block';
+  ver.dataset.jid = verJid === undefined ? '' : verJid;
+}
+$('#st-ver').onclick = () => { verResultado($('#st-ver').dataset.jid); $('#status').className = ''; };
+$('#st-parar').onclick = () => { if (currentId) fetch(`/api/executions/${currentId}/stop`, { method: 'POST' }); $('#st-parar').disabled = true; $('#st-parar').textContent = 'Interrompendo...'; };
 
 async function executar(jid) {
   const r = await fetch('/api/jornadas/' + encodeURIComponent(jid) + '/executar', { method: 'POST' });
   const x = await r.json();
   if (!r.ok) { alert(x.error); return; }
-  track(x.id, 'Jornada ' + jid);
+  track(x.id, jid, jid);
 }
 
-function track(id, titulo) {
-  currentId = id; clearInterval(timer);
-  timer = setInterval(async () => {
+const FASES = {starting: 'Iniciando o navegador', navigating: 'Abrindo a página', processing: 'Explorando a jornada',
+               paused: 'Pausada'};
+function mmss(s) { s = Math.max(0, Math.floor(s)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
+
+function track(id, titulo, jid) {
+  currentId = id; currentJid = jid || ''; rodandoJid = jid || null; inicio = Date.now(); clearInterval(timer);
+  $('#st-parar').disabled = false; $('#st-parar').textContent = 'Interromper execução';
+  aba('jornadas'); carregarJornadas();
+  mostrarStatus('rodando', 'Executando: ' + titulo + ' · 00:00', 'Iniciando...', '', true);
+  const tick = async () => {
     const s = await (await fetch('/api/executions/' + id)).json();
-    $('#output').textContent = JSON.stringify({ titulo, id: s.id, status: s.status, stopReason: s.stopReason, progress: s.progress }, null, 2);
+    const p = s.progress || {};
+    if (s.createdAt) inicio = Date.parse(s.createdAt) || inicio;  // mantém o cronômetro correto após recarregar a página
+    const dur = mmss((Date.now() - inicio) / 1000);
     if (['completed', 'failed', 'paused'].includes(s.status)) {
-      clearInterval(timer);
-      carregarResumo();
-      $('#output').innerHTML += `\n\n<a href="/api/executions/${id}/export?format=csv">CSV (Excel)</a>` +
-        `<a href="/api/executions/${id}/export?format=json">JSON</a>` +
-        `<a href="/api/executions/${id}/report">Relatório</a>`;
+      clearInterval(timer); timer = null; rodandoJid = null;
+      const conts = `<span>Telas <b>${p.statesDiscovered ?? 0}</b></span><span>Ações <b>${p.actionsCount ?? 0}</b></span><span>Eventos <b>${p.eventsCount ?? 0}</b></span>`;
+      const verJid = currentJid;
+      if (s.status === 'completed') mostrarStatus('ok', 'Execução concluída em ' + dur + ': ' + titulo, 'Os arquivos foram gravados em saidas\\\\' + (verJid || 'avulsa') + '\\\\. Clique em "Ver resultado".', conts, false, verJid);
+      else if (s.status === 'paused') mostrarStatus('aviso', 'Execução pausada: ' + titulo, 'Motivo: ' + (s.stopReason || 'não informado') + '. Os dados coletados até aqui foram gravados.', conts, false, verJid);
+      else mostrarStatus('erro', 'Execução falhou: ' + titulo, 'Motivo: ' + (s.stopReason || 'não informado'), conts, false, verJid);
+      carregarJornadas(); carregarResumo();
+      return;
     }
-  }, 1000);
+    const fase = FASES[p.phase] || (p.phase ? p.phase : (s.status === 'queued' ? 'Na fila' : 'Em andamento'));
+    mostrarStatus('rodando', 'Executando: ' + titulo + ' · ' + dur, fase + (p.currentUrl ? ' · ' + p.currentUrl : '') + (p.message ? ' · ' + p.message : ''),
+      `<span>Telas <b>${p.statesDiscovered ?? 0}</b></span><span>Ações <b>${p.actionsCount ?? 0}</b></span><span>Eventos <b>${p.eventsCount ?? 0}</b></span>`, true);
+  };
+  timer = setInterval(tick, 1000); tick();
 }
 
 $('#form').onsubmit = async (e) => {
@@ -754,15 +878,20 @@ $('#form').onsubmit = async (e) => {
   const payload = { urls: [{ url: $('#url').value, depth: +$('#depth').value, maxStates: +$('#states').value,
              maxActions: +$('#actions').value, singleUrlMode: $('#single').checked }],
     template: 'sintetico-padrao', browserMode: 'headless' };
-  $('#output').textContent = 'Iniciando...';
   const r = await fetch('/api/executions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const x = await r.json();
-  if (!r.ok) { $('#output').textContent = x.error; return; }
-  track(x.id, 'Execução avulsa');
+  if (!r.ok) { alert(x.error); return; }
+  track(x.id, 'Execução avulsa', '');
 };
-$('#stop').onclick = () => { if (currentId) fetch(`/api/executions/${currentId}/stop`, { method: 'POST' }); };
 
-carregarJornadas().then(carregarResumo);
+// retoma o acompanhamento se a página foi recarregada com uma execução em andamento
+async function retomar() {
+  const lista = await (await fetch('/api/executions')).json();
+  const ativa = lista.find(x => x.status === 'queued' || x.status === 'running');
+  if (ativa) track(ativa.id, ativa.jornadaNome || ativa.jornadaId || 'Execução avulsa', ativa.jornadaId || '');
+}
+
+carregarJornadas().then(carregarResumo).then(retomar);
 </script>
 """
 

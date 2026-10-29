@@ -16,6 +16,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 SEPARADOR = " | "
+PAGINAS_DE_ERRO = ("chrome-error://", "about:")  # download bloqueado/erro de navegação: não é tela da jornada
 PASSO_RE = re.compile(r"\bpasso\s+(\d+\s*de\s*\d+)", re.I)
 TECNOLOGIA_META = "meta_pixel"
 
@@ -120,7 +121,7 @@ def _chave_estado(nome: str) -> tuple[str, str, str]:
 def _nomes_das_telas(telas: list[Any]) -> list[str]:
     """Nomes das telas alcançadas, sem repetição imediata e sem a versão só-URL de uma tela que logo ganha rótulo."""
     nomes = [t["stateName"] if isinstance(t, dict) else str(t) for t in telas]
-    nomes = [n for n in nomes if n]
+    nomes = [n for n in nomes if n and not n.startswith(PAGINAS_DE_ERRO)]
     resultado = []
     for indice, nome in enumerate(nomes):
         url, rotulo, passo = partes_estado(nome)
